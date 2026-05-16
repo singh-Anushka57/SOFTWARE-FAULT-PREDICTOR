@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GSO Fault Predictor — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #06060a;
+    --bg2: #0d0d14;
+    --bg3: #13131e;
+    --card: #0f0f1a;
+    --card2: #161625;
+    --border: rgba(99,88,255,0.18);
+    --border2: rgba(99,88,255,0.08);
+    --accent: #6358ff;
+    --accent2: #a78bfa;
+    --red: #ff4c6a;
+    --green: #22d3a0;
+    --amber: #f59e0b;
+    --text: #e8e6ff;
+    --text2: #9490b0;
+    --text3: #4e4a70;
+    --font: 'Syne', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --radius: 14px;
+    --radius2: 20px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(99,88,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,88,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 24px;
+    border-bottom: 1px solid var(--border2);
+    margin-bottom: 32px;
+  }
+
+  .logo-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 24px rgba(99,88,255,0.4);
+  }
+
+  .logo-text {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text3);
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .header-badge {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--accent2);
+    background: rgba(99,88,255,0.12);
+    border: 1px solid var(--border);
+    padding: 5px 14px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 24px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    background: var(--bg2);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(99,88,255,0.06);
+    box-shadow: 0 0 20px rgba(99,88,255,0.12);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0;
+    opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+
+  .upload-label {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .upload-label strong { color: var(--accent2); }
+
+  .file-info {
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    display: none;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .file-info.show { display: flex; }
+
+  .ctrl-group { margin-bottom: 18px; }
+
+  .model-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .model-btn {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font);
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .model-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  .model-btn.active {
+    background: rgba(99,88,255,0.15);
+    border-color: var(--accent);
+    color: var(--accent2);
+    box-shadow: 0 0 14px rgba(99,88,255,0.2);
+  }
+
+  .model-desc {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  .slider-wrap { position: relative; }
+
+  .slider-val {
+    position: absolute;
+    right: 0; top: -26px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(99,88,255,0.6);
+    cursor: pointer;
+  }
+
+  .run-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 24px rgba(99,88,255,0.35);
+  }
+
+  .run-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(99,88,255,0.5);
+  }
+
+  .run-btn:active { transform: translateY(0); }
+
+  .run-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .main { display: flex; flex-direction: column; gap: 20px; }
+
+  .empty-state {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 64px 32px;
+    text-align: center;
+  }
+
+  .empty-glyph { font-size: 56px; margin-bottom: 16px; opacity: 0.5; }
+
+  .empty-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text2);
+    margin-bottom: 8px;
+  }
+
+  .empty-sub {
+    font-size: 13px;
+    color: var(--text3);
+    font-family: var(--mono);
+    max-width: 300px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .metric-card:hover { border-color: var(--border); }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-line, var(--accent));
+  }
+
+  .metric-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 24px;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
+  }
+
+  .chart-tag {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--accent2);
+    background: rgba(99,88,255,0.12);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .feature-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .feature-badge {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(99,88,255,0.1);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    transition: all 0.2s;
+  }
+
+  .feature-badge.selected {
+    background: rgba(34,211,160,0.1);
+    border-color: rgba(34,211,160,0.3);
+    color: var(--green);
+  }
+
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    overflow: hidden;
+  }
+
+  .table-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .table-title { font-size: 14px; font-weight: 700; }
+
+  .table-search {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    width: 200px;
+    transition: border-color 0.2s;
+  }
+
+  .table-search::placeholder { color: var(--text3); }
+  .table-search:focus { border-color: var(--accent); }
+
+  .table-scroll { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+  thead th {
+    position: sticky; top: 0;
+    background: var(--card2);
+    padding: 12px 16px;
+    text-align: left;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border2);
+    white-space: nowrap;
+  }
+
+  tbody tr { border-bottom: 1px solid var(--border2); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(99,88,255,0.04); }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody td {
+    padding: 10px 16px;
+    color: var(--text2);
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  .fault-yes {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--red);
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  .fault-no {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--green);
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  .pulse-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .fault-yes .pulse-dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .fault-no .pulse-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  .log-card {
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    padding: 24px;
+  }
+
+  .log-pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.9;
+    white-space: pre-wrap;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 16px 20px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .log-line-key { color: var(--accent2); }
+  .log-line-val { color: var(--text); }
+  .log-line-good { color: var(--green); }
+  .log-line-bad { color: var(--red); }
+  .log-line-head { color: var(--amber); font-weight: 600; }
+
+  .progress-wrap {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .progress-wrap.show { display: flex; }
+
+  .progress-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+  }
+
+  .progress-bar {
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-text {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .algo-badge { display: flex; gap: 8px; }
+
+  .algo-pill {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 4px 12px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 13px;
+    font-family: var(--mono);
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 320px;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: rgba(255,76,106,0.4); color: var(--red); }
+  .toast.success { border-color: rgba(34,211,160,0.3); color: var(--green); }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: relative; top: 0; }
+    .metrics-row { grid-template-columns: 1fr 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="header">
+    <div class="logo-group">
+      <div class="logo-icon">🐍</div>
+      <div>
+        <div class="logo-text">GSO Fault Predictor</div>
+        <div class="logo-sub">Glider Snake Optimization · v2.0</div>
+      </div>
+    </div>
+    <div class="header-badge">Software Quality Intelligence</div>
+  </header>
+
+  <div class="layout">
+
+    <aside class="sidebar">
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Dataset</div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept=".csv,.xls,.xlsx" />
+          <div class="upload-icon">📂</div>
+          <div class="upload-label">
+            Drop your dataset here<br/>
+            <strong>CSV · XLS · XLSX</strong> supported
+          </div>
+          <div class="file-info" id="fileInfo">
+            <span>✓</span><span id="fileName">dataset.csv</span>
+          </div>
+        </div>
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label" id="progressLabel">Initialising GSO population...</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Classifier</div>
+        <div class="ctrl-group">
+          <div class="model-grid" id="modelGrid">
+            <button class="model-btn active" data-model="QDA">QDA</button>
+            <button class="model-btn" data-model="KNN">KNN</button>
+            <button class="model-btn" data-model="NB">NB</button>
+            <button class="model-btn" data-model="RF">RF</button>
+          </div>
+          <div class="model-desc" id="modelDesc">Quadratic Discriminant Analysis — robust non-linear decision boundaries</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> GSO Iterations</div>
+        <div class="ctrl-group">
+          <div class="slider-wrap">
+            <span class="slider-val" id="iterVal">10</span>
+            <input type="range" id="iterSlider" min="5" max="30" step="5" value="10" />
+          </div>
+          <div class="model-desc" style="margin-top: 10px;">Higher iterations → better feature selection · slower run</div>
+        </div>
+      </div>
+
+      <button class="run-btn" id="runBtn" disabled>
+        <div class="spinner" id="spinner"></div>
+        <span id="runBtnText">🔍 Run Analysis</span>
+      </button>
+
+    </aside>
+
+    <main class="main">
+
+      <div class="empty-state" id="emptyState">
+        <div class="empty-glyph">🧬</div>
+        <div class="empty-title">No Analysis Yet</div>
+        <div class="empty-sub">Upload a software metrics dataset and configure the GSO parameters to begin fault prediction.</div>
+      </div>
+
+      <div id="resultsSection" style="display:none;">
+
+        <div class="metrics-row fade-in" id="metricsRow" style="margin-bottom:20px;">
+          <div class="metric-card" style="--accent-line: var(--accent);">
+            <div class="metric-label">Accuracy</div>
+            <div class="metric-value" id="mAcc">—</div>
+            <div class="metric-sub">classification rate</div>
+          </div>
+          <div class="metric-card" style="--accent-line: var(--green);">
+            <div class="metric-label">F1 Score</div>
+            <div class="metric-value" id="mF1">—</div>
+            <div class="metric-sub">harmonic mean</div>
+          </div>
+          <div class="metric-card" style="--accent-line: var(--amber);">
+            <div class="metric-label">Precision</div>
+            <div class="metric-value" id="mPrec">—</div>
+            <div class="metric-sub">positive predictive</div>
+          </div>
+          <div class="metric-card" style="--accent-line: var(--red);">
+            <div class="metric-label">Recall</div>
+            <div class="metric-value" id="mRec">—</div>
+            <div class="metric-sub">sensitivity rate</div>
+          </div>
+        </div>
+
+        <div class="charts-grid fade-in" style="margin-bottom:20px;">
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Fault Distribution</div>
+              <div class="chart-tag">MODULE OVERVIEW</div>
+            </div>
+            <div class="gauge-wrap">
+              <div style="position:relative; width:100%; height:220px;">
+                <canvas id="donutChart" role="img" aria-label="Doughnut chart showing faulty vs not faulty module distribution">Module fault distribution chart.</canvas>
+              </div>
+              <div style="display:flex; gap:20px; margin-top:12px;">
+                <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); font-family:var(--mono);">
+                  <span style="width:10px;height:10px;border-radius:2px;background:#ff4c6a;display:inline-block;"></span>
+                  Faulty <strong id="faultyPct" style="color:var(--text);">—</strong>
+                </span>
+                <span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); font-family:var(--mono);">
+                  <span style="width:10px;height:10px;border-radius:2px;background:#22d3a0;display:inline-block;"></span>
+                  Healthy <strong id="healthyPct" style="color:var(--text);">—</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">Model Performance</div>
+              <div class="chart-tag">METRICS</div>
+            </div>
+            <div style="position:relative; width:100%; height:220px;">
+              <canvas id="metricsChart" role="img" aria-label="Bar chart of model performance metrics: accuracy, F1, precision, recall">Performance metrics comparison.</canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="chart-card fade-in" style="margin-bottom:20px;">
+          <div class="chart-header">
+            <div class="chart-title">Feature Selection — GSO Output</div>
+            <div class="chart-tag" id="featureTag">0 / 0 SELECTED</div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div style="height:6px; background:var(--bg3); border-radius:3px; overflow:hidden;">
+              <div id="featureReductionBar" style="height:100%; background:var(--accent); border-radius:3px; width:0%; transition: width 0.8s ease; box-shadow: 0 0 10px var(--accent);"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px;">
+              <span style="font-size:11px; font-family:var(--mono); color:var(--text3);">Feature reduction</span>
+              <span id="reductionPct" style="font-size:11px; font-family:var(--mono); color:var(--accent2);">—</span>
+            </div>
+          </div>
+          <div class="feature-list" id="featureList">
+            <span class="feature-badge" style="color:var(--text3); border-color:var(--border2);">Run analysis to see selected features</span>
+          </div>
+        </div>
+
+        <div class="table-wrap fade-in" style="margin-bottom:20px;">
+          <div class="table-header">
+            <div class="table-title">Module-wise Predictions</div>
+            <input class="table-search" type="text" placeholder="🔍  Filter modules..." id="tableSearch" />
+          </div>
+          <div class="table-scroll">
+            <table id="resultsTable">
+              <thead><tr id="tableHead"></tr></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="log-card fade-in">
+          <div class="card-title"><span class="dot"></span> Analysis Log</div>
+          <pre class="log-pre" id="logPre">—</pre>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-text">GSO Software Fault Predictor · Glider Snake Optimization · 2025</div>
+    <div class="algo-badge">
+      <span class="algo-pill">Lévy Flight</span>
+      <span class="algo-pill">Binarisation</span>
+      <span class="algo-pill">Sigmoid Transfer</span>
+      <span class="algo-pill">QDA · KNN · NB · RF</span>
+    </div>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let selectedModel = "QDA";
+let uploadedFile = null;
+let donutChart = null;
+let metricsChart = null;
+let allRows = [];
+
+const modelDescs = {
+  QDA: "Quadratic Discriminant Analysis — robust non-linear decision boundaries",
+  KNN: "K-Nearest Neighbours — instance-based lazy learner",
+  NB: "Gaussian Naïve Bayes — probabilistic classifier, fast & simple",
+  RF: "Random Forest — ensemble of decision trees, high accuracy"
+};
+
+document.getElementById("modelGrid").addEventListener("click", e => {
+  const btn = e.target.closest(".model-btn");
+  if (!btn) return;
+  document.querySelectorAll(".model-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  selectedModel = btn.dataset.model;
+  document.getElementById("modelDesc").textContent = modelDescs[selectedModel];
+});
+
+const slider = document.getElementById("iterSlider");
+const iterVal = document.getElementById("iterVal");
+slider.addEventListener("input", () => { iterVal.textContent = slider.value; });
+
+const fileInput = document.getElementById("fileInput");
+const uploadZone = document.getElementById("uploadZone");
+
+uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+uploadZone.addEventListener("drop", e => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag-over");
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+fileInput.addEventListener("change", () => {
+  if (fileInput.files[0]) handleFile(fileInput.files[0]);
+});
+
+function handleFile(f) {
+  uploadedFile = f;
+  document.getElementById("fileName").textContent = f.name;
+  document.getElementById("fileInfo").classList.add("show");
+  document.getElementById("runBtn").disabled = false;
+  showToast("✓ " + f.name + " ready", "success");
+}
+
+document.getElementById("runBtn").addEventListener("click", runAnalysis);
+
+async function runAnalysis() {
+
+  if (!uploadedFile) return;
+
+  const btn = document.getElementById("runBtn");
+  const spinner = document.getElementById("spinner");
+  const btnText = document.getElementById("runBtnText");
+
+  btn.disabled = true;
+
+  spinner.style.display = "block";
+
+  btnText.textContent = "Running GSO...";
+
+  const progress =
+    document.getElementById("progressWrap");
+
+  const progressFill =
+    document.getElementById("progressFill");
+
+  const progressLabel =
+    document.getElementById("progressLabel");
+
+  progress.classList.add("show");
+
+  const steps = [
+
+    [15, "Initialising snake population..."],
+
+    [35, "Evaluating fitness functions..."],
+
+    [55, "Applying Lévy flight exploration..."],
+
+    [75, "Converging on optimal features..."],
+
+    [90, "Training classifier model..."],
+
+    [100, "Computing fault predictions..."]
+
+  ];
+
+  let stepIdx = 0;
+
+  const prog = setInterval(() => {
+
+    if (stepIdx < steps.length) {
+
+      const [w, label] = steps[stepIdx++];
+
+      progressFill.style.width = w + "%";
+
+      progressLabel.textContent = label;
+    }
+
+  }, parseInt(slider.value) * 60 + 400);
+
+  try {
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      uploadedFile
+    );
+
+    formData.append(
+      "model_choice",
+      selectedModel
+    );
+
+    formData.append(
+      "iterations",
+      parseInt(slider.value)
+    );
+
+    const response = await fetch(
+
+      `${API}/predict`,
+
+      {
+        method: "POST",
+        body: formData
+      }
+
+    );
+
+    clearInterval(prog);
+
+    const data = await response.json();
+
+    if (data.error) {
+
+      showToast(
+        "❌ " + data.error,
+        "error"
+      );
+
+      return;
+    }
+
+    renderFastAPIResults(data);
+
+    showToast(
+      "✓ Analysis complete!",
+      "success"
+    );
+
+  } catch (err) {
+
+    clearInterval(prog);
+
+    console.error(err);
+
+    showToast(
+
+      "❌ Backend connection failed",
+
+      "error"
+    );
+  }
+
+  progressFill.style.width = "100%";
+
+  setTimeout(() => {
+
+    progress.classList.remove("show");
+
+    progressFill.style.width = "0%";
+
+  }, 600);
+
+  btn.disabled = false;
+
+  spinner.style.display = "none";
+
+  btnText.textContent = "🔍 Run Analysis";
+}
+
+function parseSummary(summary) {
+  const get = (rx) => { const m = summary.match(rx); return m ? m[1].trim() : null; };
+  return {
+    accuracy: get(/Accuracy\s*:\s*([\d.]+%)/),
+    f1: get(/F1-Score\s*:\s*([\d.]+)/),
+    precision: get(/Precision\s*:\s*([\d.]+)/),
+    recall: get(/Recall\s*:\s*([\d.]+)/),
+    faulty: get(/Faulty\s*:\s*(\d+)/),
+    notFaulty: get(/Not Faulty\s*:\s*(\d+)/),
+    totalModules: get(/Total Modules\s*:\s*(\d+)/),
+    totalFeatures: get(/Total Features\s*:\s*(\d+)/),
+    selectedFeatures: get(/Selected Features\s*:\s*([\d \/]+)/),
+    reduction: get(/Reduction\s*:\s*([\d.]+%)/),
+    featuresUsed: get(/Features Used\s*:\s*(.+)/)
+  };
+}
+
+function renderResults(tableData, summary) {
+  const s = parseSummary(summary || "");
+
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("resultsSection").style.display = "block";
+
+  document.getElementById("mAcc").textContent = s.accuracy || "—";
+  document.getElementById("mF1").textContent = s.f1 ? parseFloat(s.f1).toFixed(3) : "—";
+  document.getElementById("mPrec").textContent = s.precision ? parseFloat(s.precision).toFixed(3) : "—";
+  document.getElementById("mRec").textContent = s.recall ? parseFloat(s.recall).toFixed(3) : "—";
+
+  const faulty = parseInt(s.faulty) || 0;
+  const healthy = parseInt(s.notFaulty) || 0;
+  const total = faulty + healthy;
+
+  document.getElementById("faultyPct").textContent = total > 0 ? ((faulty/total)*100).toFixed(1)+"%" : "—";
+  document.getElementById("healthyPct").textContent = total > 0 ? ((healthy/total)*100).toFixed(1)+"%" : "—";
+
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(document.getElementById("donutChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Faulty", "Healthy"],
+      datasets: [{
+        data: [faulty || 1, healthy || 1],
+        backgroundColor: ["#ff4c6a", "#22d3a0"],
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} modules` } }
+      },
+      cutout: "68%"
+    }
+  });
+
+  if (metricsChart) metricsChart.destroy();
+  const acc = parseFloat(s.accuracy) / 100 || 0;
+  const f1 = parseFloat(s.f1) || 0;
+  const prec = parseFloat(s.precision) || 0;
+  const rec = parseFloat(s.recall) || 0;
+
+  metricsChart = new Chart(document.getElementById("metricsChart"), {
+    type: "bar",
+    data: {
+      labels: ["Accuracy", "F1 Score", "Precision", "Recall"],
+      datasets: [{
+        data: [acc, f1, prec, rec],
+        backgroundColor: ["#6358ff", "#22d3a0", "#f59e0b", "#ff4c6a"],
+        borderRadius: 6,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` ${(c.raw*100).toFixed(1)}%` } }
+      },
+      scales: {
+        y: {
+          min: 0, max: 1,
+          grid: { color: "rgba(99,88,255,0.08)" },
+          ticks: { color: "#4e4a70", font: { family: "'JetBrains Mono'" }, callback: v => (v*100).toFixed(0)+"%" }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: "#9490b0", font: { family: "'JetBrains Mono'", size: 11 } }
+        }
+      }
+    }
+  });
+
+  if (s.selectedFeatures && s.totalFeatures) {
+    const selParts = s.selectedFeatures.split("/").map(x => x.trim());
+    const sel = parseInt(selParts[0]) || 0;
+    const tot = parseInt(selParts[1]) || parseInt(s.totalFeatures) || 1;
+    const reduction = sel > 0 ? ((1 - sel/tot)*100) : 0;
+    document.getElementById("featureTag").textContent = `${sel} / ${tot} SELECTED`;
+    document.getElementById("featureReductionBar").style.width = reduction.toFixed(0) + "%";
+    document.getElementById("reductionPct").textContent = s.reduction || reduction.toFixed(1) + "% reduction";
+  }
+
+  if (s.featuresUsed) {
+    const feats = s.featuresUsed.split(",").map(f => f.trim());
+    const fl = document.getElementById("featureList");
+    fl.innerHTML = "";
+    feats.forEach(f => {
+      if (f) {
+        const span = document.createElement("span");
+        span.className = "feature-badge selected";
+        span.textContent = f;
+        fl.appendChild(span);
+      }
+    });
+  }
+
+  if (tableData && tableData.headers && tableData.data) {
+    buildTable(tableData.headers, tableData.data);
+  }
+
+  renderLog(summary || "");
+
+  showToast("✓ Analysis complete!", "success");
+  document.getElementById("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderFastAPIResults(data) {
+
+  document.getElementById("emptyState").style.display = "none";
+
+  document.getElementById("resultsSection").style.display = "block";
+
+  // ============================================
+  // METRICS
+  // ============================================
+
+  document.getElementById("mAcc").textContent =
+    data.model_info.accuracy + "%";
+
+  document.getElementById("mF1").textContent =
+    data.model_info.f1_score;
+
+  document.getElementById("mPrec").textContent =
+    data.model_info.precision;
+
+  document.getElementById("mRec").textContent =
+    data.model_info.recall;
+
+  // ============================================
+  // PIE CHART
+  // ============================================
+
+  const faulty =
+    data.dataset_info.faulty_modules;
+
+  const healthy =
+    data.dataset_info.safe_modules;
+
+  const total = faulty + healthy;
+
+  document.getElementById("faultyPct").textContent =
+    ((faulty / total) * 100).toFixed(1) + "%";
+
+  document.getElementById("healthyPct").textContent =
+    ((healthy / total) * 100).toFixed(1) + "%";
+
+  if (donutChart)
+    donutChart.destroy();
+
+  donutChart = new Chart(
+
+    document.getElementById("donutChart"),
+
+    {
+      type: "doughnut",
+
+      data: {
+
+        labels: [
+          "Faulty",
+          "Healthy"
+        ],
+
+        datasets: [{
+
+          data: [
+            faulty,
+            healthy
+          ],
+
+          backgroundColor: [
+            "#ff4c6a",
+            "#22d3a0"
+          ],
+
+          borderWidth: 0
+
+        }]
+      },
+
+      options: {
+
+        responsive: true,
+
+        maintainAspectRatio: false,
+
+        plugins: {
+
+          legend: {
+            display: false
+          }
+        },
+
+        cutout: "68%"
+      }
+    }
+  );
+
+  // ============================================
+  // METRICS BAR CHART
+  // ============================================
+
+  if (metricsChart)
+    metricsChart.destroy();
+
+  metricsChart = new Chart(
+
+    document.getElementById("metricsChart"),
+
+    {
+      type: "bar",
+
+      data: {
+
+        labels: [
+
+          "Accuracy",
+          "F1 Score",
+          "Precision",
+          "Recall"
+
+        ],
+
+        datasets: [{
+
+          data: [
+
+            data.model_info.accuracy / 100,
+
+            data.model_info.f1_score,
+
+            data.model_info.precision,
+
+            data.model_info.recall
+
+          ],
+
+          backgroundColor: [
+
+            "#6358ff",
+            "#22d3a0",
+            "#f59e0b",
+            "#ff4c6a"
+
+          ],
+
+          borderRadius: 6
+        }]
+      },
+
+      options: {
+
+        responsive: true,
+
+        maintainAspectRatio: false,
+
+        plugins: {
+
+          legend: {
+            display: false
+          }
+        },
+
+        scales: {
+
+          y: {
+
+            min: 0,
+            max: 1
+          }
+        }
+      }
+    }
+  );
+
+  // ============================================
+  // FEATURE BADGES
+  // ============================================
+
+  const fl =
+    document.getElementById("featureList");
+
+  fl.innerHTML = "";
+
+  data.top_features.forEach(f => {
+
+    const span =
+      document.createElement("span");
+
+    span.className =
+      "feature-badge selected";
+
+    span.textContent =
+      f.name;
+
+    fl.appendChild(span);
+
+  });
+
+  // ============================================
+  // TABLE
+  // ============================================
+
+  const headers = [
+
+    "Module",
+    "Prediction",
+    "Confidence",
+    "Risk"
+  ];
+
+  const rows =
+    data.modules.map(m => [
+
+      m.name,
+
+      m.prediction,
+
+      m.confidence,
+
+      m.risk
+
+    ]);
+
+  buildTable(headers, rows);
+
+  // ============================================
+  // LOG
+  // ============================================
+
+  document.getElementById("logPre").textContent =
+
+`Algorithm  : ${data.model_info.algorithm}
+
+Classifier : ${data.model_info.classifier}
+
+Accuracy   : ${data.model_info.accuracy}%
+
+Precision  : ${data.model_info.precision}
+
+Recall     : ${data.model_info.recall}
+
+F1 Score   : ${data.model_info.f1_score}
+
+Modules    : ${data.dataset_info.total_modules}
+
+Faulty     : ${data.dataset_info.faulty_modules}
+
+Safe       : ${data.dataset_info.safe_modules}`;
+}
+
+function buildTable(headers, rows) {
+  const thead = document.getElementById("tableHead");
+  const tbody = document.getElementById("tableBody");
+  thead.innerHTML = "";
+  tbody.innerHTML = "";
+
+  headers.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    thead.appendChild(th);
+  });
+
+  allRows = rows;
+  renderTableRows(rows, headers);
+
+  document.getElementById("tableSearch").addEventListener("input", function() {
+    const q = this.value.toLowerCase();
+    const filtered = allRows.filter(r => r.some(c => String(c).toLowerCase().includes(q)));
+    renderTableRows(filtered, headers);
+  });
+}
+
+function renderTableRows(rows, headers) {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+  const faultIdx = headers ? headers.indexOf("Fault_Predicted") : -1;
+
+  rows.slice(0, 500).forEach(row => {
+    const tr = document.createElement("tr");
+    row.forEach((cell, i) => {
+      const td = document.createElement("td");
+      if (i === faultIdx || String(cell).includes("FAULTY")) {
+        if (String(cell).includes("FAULTY") && !String(cell).includes("NOT")) {
+          td.innerHTML = `<span class="fault-yes"><span class="pulse-dot"></span> FAULTY</span>`;
+        } else {
+          td.innerHTML = `<span class="fault-no"><span class="pulse-dot"></span> HEALTHY</span>`;
+        }
+      } else {
+        td.textContent = typeof cell === "number" ? (Number.isInteger(cell) ? cell : cell.toFixed(4)) : cell;
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function renderLog(summary) {
+  const lines = summary.split("\n");
+  const pre = document.getElementById("logPre");
+  pre.innerHTML = lines.map(line => {
+    if (line.includes("✅") || line.includes("Complete")) return `<span class="log-line-good">${esc(line)}</span>`;
+    if (line.includes("❌") || line.includes("Error")) return `<span class="log-line-bad">${esc(line)}</span>`;
+    if (line.includes("📊") || line.includes("🧬") || line.includes("🎯") || line.includes("🔴")) return `<span class="log-line-head">${esc(line)}</span>`;
+    if (line.includes(":")) {
+      const idx = line.indexOf(":");
+      return `<span class="log-line-key">${esc(line.slice(0,idx+1))}</span><span class="log-line-val">${esc(line.slice(idx+1))}</span>`;
+    }
+    return `<span style="color:var(--text3)">${esc(line)}</span>`;
+  }).join("\n");
+}
+
+function esc(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function showToast(msg, type="success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast " + type;
+  setTimeout(() => t.classList.add("show"), 10);
+  setTimeout(() => t.classList.remove("show"), 3500);
+}
+</script>
+</body>
+</html>

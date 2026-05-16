@@ -6,3 +6,8 @@ seaborn
 psutil
 notebook
 ipykernel
+gradio
+numpy
+pandas
+scikit-learn
+openpyxl
