@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.responses import FileResponse
 import uvicorn
 import numpy as np
 import pandas as pd
@@ -318,11 +318,8 @@ def GSO(
 # =====================================================
 
 @app.get("/")
-def home():
-
-    return {
-        "message": "Software Fault Predictor API Running"
-    }
+async def home():
+    return FileResponse("index.html")
 
 # =====================================================
 # PREDICT API
