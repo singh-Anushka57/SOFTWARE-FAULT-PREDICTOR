@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
 import numpy as np
@@ -42,6 +43,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # =====================================================
 # SIGMOID
@@ -319,7 +322,7 @@ def GSO(
 
 @app.get("/")
 async def home():
-    return FileResponse("index.html")
+    return FileResponse("static/index.html")
 
 # =====================================================
 # PREDICT API
