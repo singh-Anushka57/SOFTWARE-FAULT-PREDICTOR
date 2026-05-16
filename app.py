@@ -319,7 +319,7 @@ def GSO(
 
 @app.get("/")
 async def home():
-    return FileResponse("static/index.html")
+    return FileResponse("index.html")
 
 # =====================================================
 # PREDICT API
