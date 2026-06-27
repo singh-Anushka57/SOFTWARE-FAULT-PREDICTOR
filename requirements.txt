@@ -11,3 +11,7 @@ numpy
 pandas
 scikit-learn
 openpyxl
+fastapi
+uvicorn
+python-multipart
+openpyxl
